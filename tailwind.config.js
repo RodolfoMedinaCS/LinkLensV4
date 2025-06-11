@@ -9,18 +9,26 @@ module.exports = {
     extend: {
       fontFamily: {
         sans: ['var(--font-inter)', 'Inter', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
       },
       colors: {
+        primary: '#FFFFFF',
+        secondary: '#8A94A4',
+        accent: '#3E63DD',
+        'accent-hover': '#2a4ec2',
         background: '#0D1117',
         card: '#161B22',
         border: '#21262D',
-        primary: '#3E63DD',
-        'primary-dark': '#2a4ec2',
         error: '#E5534B',
-        muted: '#8A94A4',
+        success: '#2DA44E',
+        warning: '#C69026',
+      },
+      borderRadius: {
+        none: '0',
+        sm: '2px',
       },
     },
   },
   plugins: [],
   darkMode: 'class',
-} 
+}

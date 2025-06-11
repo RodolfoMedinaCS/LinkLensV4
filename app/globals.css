@@ -2,43 +2,62 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+
 :root {
-  --foreground: #ffffff;
-  --background-start: #0D1117;
-  --background-end: #0D1117;
-  --card-bg: #161B22;
-  --border: #21262D;
-  --primary: #3E63DD;
-  --primary-dark: #2a4ec2;
-  --error: #E5534B;
-  --muted: #8A94A4;
+  --font-inter: 'Inter', sans-serif;
 }
 
-.dark {
-  --foreground: #ffffff;
-  --background-start: #0D1117;
-  --background-end: #0D1117;
-  --card-bg: #161B22;
-  --border: #21262D;
-  --primary: #3E63DD;
-  --primary-dark: #2a4ec2;
-  --error: #E5534B;
-  --muted: #8A94A4;
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  font-family: var(--font-inter);
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background-start);
+  color: #FFFFFF;
+  background: #0D1117;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
 }
 
 @layer base {
   input,
   textarea,
   select {
-    @apply bg-[#161B22] border border-[#21262D] rounded-sm p-3 text-white;
+    @apply bg-card border border-border text-primary placeholder-secondary;
   }
   
   button {
-    @apply bg-[#3E63DD] hover:bg-[#2a4ec2] text-white font-medium py-3 px-4 rounded-sm transition-colors;
+    @apply font-medium transition-colors;
   }
-} 
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-accent hover:bg-accent-hover text-primary px-4 py-2 border-0;
+  }
+  
+  .btn-secondary {
+    @apply bg-transparent hover:bg-card text-primary border border-border px-4 py-2;
+  }
+  
+  .card {
+    @apply bg-card border border-border;
+  }
+  
+  .input {
+    @apply bg-card border border-border text-primary placeholder-secondary px-3 py-2 focus:border-accent focus:outline-none;
+  }
+}
