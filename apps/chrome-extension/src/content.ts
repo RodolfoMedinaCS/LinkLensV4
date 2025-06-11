@@ -1,0 +1,1 @@
+console.log("LinkLens content script loaded."); 

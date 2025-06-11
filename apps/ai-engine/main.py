@@ -1,6 +1,15 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, BackgroundTasks
+from pydantic import BaseModel, Field
+from typing import Optional, List, Dict
 import uvicorn
+import os
+
+# Placeholder for the scraping logic
+from scraper import scrape_and_update_link
+
+# Load environment variables
+from dotenv import load_dotenv
+load_dotenv()
 
 app = FastAPI(
     title="LinkLens AI Engine",
@@ -16,6 +25,25 @@ class Link(BaseModel):
 
 class Summary(BaseModel):
     summary: str
+
+class ScrapeRequest(BaseModel):
+    url: str
+    link_id: str = Field(..., alias='link_id')
+
+class ScrapeResponse(BaseModel):
+    url: str
+    title: Optional[str]
+    description: Optional[str]
+    author: Optional[str]
+    publicationDate: Optional[str]
+    siteName: Optional[str]
+    language: Optional[str]
+    mainImage: Optional[str]
+    favicon: Optional[str]
+    keywords: Optional[List[str]]
+    mainContent: Dict[str, Optional[str]]
+    structuredData: Dict[str, Optional[List[Dict]]]
+    rawHtml: str
 
 @app.get("/")
 def read_root():
@@ -38,6 +66,15 @@ async def summarize_link(link: Link):
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+@app.post("/scrape")
+async def scrape(request: ScrapeRequest, background_tasks: BackgroundTasks):
+    """
+    Accepts a scrape request and adds it to a background queue.
+    Returns immediately with a 'processing_accepted' status.
+    """
+    background_tasks.add_task(scrape_and_update_link, request.link_id, request.url)
+    return {"status": "processing_accepted", "link_id": request.link_id}
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True) 

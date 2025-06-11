@@ -2,11 +2,11 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { createBrowserClient } from '../../lib/supabase/client';
 
 export default function SignOutButton() {
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = createBrowserClient();
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -15,7 +15,7 @@ export default function SignOutButton() {
 
   return (
     <button 
-      className="bg-card hover:bg-border text-white px-4 py-2 rounded-sm"
+      className="bg-transparent border border-border hover:bg-card text-text-primary px-4 py-2 rounded-sm transition-colors"
       onClick={handleSignOut}
     >
       Sign Out
