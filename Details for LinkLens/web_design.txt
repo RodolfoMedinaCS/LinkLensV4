@@ -1,0 +1,104 @@
+
+
+
+Theme 1: "Focus Terminal"
+
+This theme is inspired by modern code editors and developer tools. It's dark-by-default, high-contrast, and uses typography and minimal color to create a sharp, focused environment.
+
+    Palette:
+
+        Primary: #FFFFFF (White)
+
+        Secondary: #8A94A4 (Muted Gray)
+
+        Accent: #3E63DD (Electric Blue)
+
+        Neutral: #0D1117 (Near Black), #161B22 (Card BG), #21262D (Borders)
+
+        Semantic:
+
+            Success: #2DA44E
+
+            Warning: #C69026
+
+            Error: #E5534B
+
+    Typography:
+
+        Heading: Inter, a clean sans-serif known for its clarity at all sizes. Fallback: sans-serif.
+
+        Body: Inter. Fallback: sans-serif.
+
+        Monospace: JetBrains Mono, for tags, code snippets, or metadata. Fallback: monospace.
+
+    Component Vibe:
+
+        Buttons: Sharp, squared-off corners. Primary CTAs are solid accent color; secondary buttons have a subtle, light border.
+
+        Cards: No box-shadow. Defined by a 1px solid border and a slightly lighter background color than the main canvas.
+
+        Form Inputs: Understated with a bottom-border on focus. Minimal chrome.
+
+        Iconography: Thin, sharp, line-art icons (e.g., Feather Icons).
+
+    Background/Spacing Cues:
+
+        Whitespace: Generous but consistent, based on a 4px or 8px grid system.
+
+        Dividers: Thin, 1px lines in a subtle neutral tone.
+
+        Grid: The main dashboard should use a clear, multi-column grid to organize content efficiently.
+
+    Inspiration References:
+
+        Linear: Exemplifies the high-contrast, keyboard-centric, hyper-efficient tool aesthetic.
+
+        Vercel: Masterclass in developer-focused dashboard design, with perfect typography and spacing.
+
+        Raycast: Shows how a powerful tool can feel minimal and fast through sharp details and a dark-first UI.
+
+
+
+
+
+
+These notes apply generally, regardless of the chosen theme.
+
+    / (Landing Page): This is your marketing billboard. Lead with a strong hero section featuring the one-sentence positioning
+
+, a clear CTA to "Sign Up," and a visual of the app (perhaps an animated GIF showing a link being clustered). Use this page to visually explain the core AI features: Smart Summaries, Semantic Search, and Auto-Clustering.
+
+/dashboard (Main Shell): The authenticated experience begins here
+
+. The left navigation must be clear, legible, and provide an immediate sense of place. The active route (All Links, Clusters, etc.) should be clearly highlighted using the theme's primary or accent color. A prominent "Add Link" button should be ever-present in the header or nav.
+
+/dashboard/index.tsx (Link List): This is a data-dense view. Each link should be a "card" component containing the scraped title, the AI summary, tags, and source URL
+
+. Use typography and color to create a clear hierarchy within each card. Actions like "delete" or "move" should appear on hover to reduce visual clutter.
+
+/dashboard/clusters & /dashboard/folders (Grid View): These pages should use a responsive grid of cards. Each card represents a cluster or folder, showing its name, the number of links inside, and for clusters, the AI confidence score
+. This is a great place to use the theme's hover-state styles to provide more info in a tooltip or expanded view, which is key for advanced analysis views
+
+    .
+
+    /dashboard/search: The search bar should be a primary element. When results are displayed, clearly delineate between semantically matched results and simple keyword hits. Highlighting the user's query within the results is crucial.
+
+    /dashboard/settings: This section should be calm and utilitarian. Use standard form layouts. The "Danger Zone" for account deletion must use the "Error" semantic color and require extra confirmation to prevent accidental use.
+
+Accessibility & Responsiveness Checklist
+
+    Color Contrast: All text must have a WCAG AA-compliant contrast ratio (4.5:1 for normal text, 3:1 for large text). Use a contrast checker on your chosen palette.
+
+    Focus States: Every interactive element (buttons, links, inputs) must have a clear and visible focus state. Don't just rely on the browser default; style it to match your theme.
+
+    Tap Targets: On mobile, all interactive elements must have a tap target of at least 44x44 pixels to be easily usable.
+
+    Semantic HTML: Use proper HTML tags (<nav>, <main>, <h1>-<h6>, <button>) to ensure the application is navigable by screen readers.
+
+    ARIA Roles: Use ARIA attributes where necessary, especially for custom components like modals or dynamic filter lists, to provide context to assistive technologies.
+
+    Motion: For users with prefers-reduced-motion enabled, disable or minimize non-essential animations, especially glows, fades, and layout shifts.
+
+    Responsive Layouts: The grid for links and clusters must gracefully reflow from a multi-column desktop layout to a single-column mobile view. The main navigation might collapse into a "hamburger" menu on smaller screens
+
+.

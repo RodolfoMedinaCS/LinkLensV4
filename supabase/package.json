@@ -1,0 +1,26 @@
+{
+  "name": "supabase",
+  "version": "1.0.0",
+  "description": "Supabase configuration for LinkLens",
+  "main": "index.js",
+  "scripts": {
+    "supabase": "supabase",
+    "start": "supabase start",
+    "stop": "supabase stop",
+    "generate:types": "supabase gen types typescript --local > ../apps/web/lib/supabase/database.types.ts",
+    "migrate:new": "supabase migration new",
+    "migrate:up": "supabase db push"
+  },
+  "keywords": [
+    "supabase",
+    "postgres",
+    "auth",
+    "api"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "supabase": "^1.148.6"
+  }
+}

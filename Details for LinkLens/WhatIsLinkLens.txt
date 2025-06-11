@@ -1,0 +1,28 @@
+ChatGPT said:
+LinkLens – MVP Scope & Road-map
+
+(Professional Product Brief)
+1. Minimum Viable Product (Launch Focus)
+Pillar	AI-Powered Capability	Why It Differentiates LinkLens Today
+One-Click Capture	Browser extension scrapes rich metadata (title, author, tags, images) the moment a link is saved.	Removes manual entry friction; data quality is consistent from day 1.
+Smart Summaries	LLM generates a concise 2–3 sentence synopsis for every link.	Users can triage content at a glance—rarely offered in bookmark tools.
+Semantic Search	Vector search lets users ask natural-language queries (“design-system case studies”).	Surfaces relevant links regardless of exact keywords.
+Auto-Clustering	After 10+ links, LinkLens groups them by topic and displays a confidence score.	Eliminates early-stage “folder fatigue” and showcases AI value instantly.
+Quality Control	Duplicate and dead-link detection runs continuously.	Keeps collections clean without user intervention.
+
+Goal: Deliver these five features in a polished web app + extension so the product already feels AI-first before any collaboration layer is added.
+2. Deferred Functionality (Post-MVP)
+Phase	Feature	Rationale for Deferral
+Phase 2	Shared folders & workspaces (invite teammates, role-based permissions).	Collaboration adds product-market breadth; core AI experience must shine first.
+Phase 2	Real-time co-editing and link comments.	Builds on folder sharing once stable user flows are proven.
+Phase 3	Team analytics (engagement metrics, trend dashboards).	Requires critical mass of shared data to be meaningful.
+Phase 3	Weekly digest emails & recommendations.	Enhances retention after foundational behaviors are established.
+3. MVP Success Criteria
+Metric	Target at 90 Days Post-Launch
+Active users saving ≥25 links	500+
+Average links auto-clustered	80 % of total links
+Monthly duplicate/dead-link alerts resolved	>70 %
+User satisfaction (in-app NPS)	≥45
+4. One-Sentence Positioning
+
+    LinkLens launches as the AI-native bookmark manager that automatically summarizes, clusters, and quality-checks your saved links—collaboration features will follow once the solo experience is best-in-class.

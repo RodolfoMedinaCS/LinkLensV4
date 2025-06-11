@@ -1,0 +1,24 @@
+Main Users:
+
+    Knowledge Workers & Professionals: Individuals who regularly collect, reference, and organize large volumes of web content—such as researchers, marketers, designers, engineers, and product managers.
+
+    Tech-Savvy Individuals: Users comfortable with digital productivity tools and seeking AI-powered enhancements to their workflows.
+
+    Early Adopters of AI Productivity Tools: People interested in leveraging AI to save time and reduce manual organization effort.
+
+Industries:
+
+    Technology, design, marketing, academia, journalism, and any sector where research and content curation are essential.
+
+Expertise Levels:
+
+    The app is accessible to users with basic digital literacy but is especially valuable for intermediate to advanced users who manage extensive bookmark collections and value automation and AI-driven insights.
+
+Summary Table of Target Audience:
+User Role/Type	Industry Focus	Expertise Level
+Researchers, Marketers, PMs	Tech, Design, Media	Intermediate–Expert
+Productivity Enthusiasts	Any knowledge work	All levels
+AI/Early Tech Adopters	Broad	Intermediate+
+
+The initial focus is on delivering exceptional value to solo users, with collaboration and team features planned for future releases once the core AI-driven experience is refined
+.

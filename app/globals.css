@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground: #ffffff;
+  --background-start: #0D1117;
+  --background-end: #0D1117;
+  --card-bg: #161B22;
+  --border: #21262D;
+  --primary: #3E63DD;
+  --primary-dark: #2a4ec2;
+  --error: #E5534B;
+  --muted: #8A94A4;
+}
+
+.dark {
+  --foreground: #ffffff;
+  --background-start: #0D1117;
+  --background-end: #0D1117;
+  --card-bg: #161B22;
+  --border: #21262D;
+  --primary: #3E63DD;
+  --primary-dark: #2a4ec2;
+  --error: #E5534B;
+  --muted: #8A94A4;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background-start);
+}
+
+@layer base {
+  input,
+  textarea,
+  select {
+    @apply bg-[#161B22] border border-[#21262D] rounded-sm p-3 text-white;
+  }
+  
+  button {
+    @apply bg-[#3E63DD] hover:bg-[#2a4ec2] text-white font-medium py-3 px-4 rounded-sm transition-colors;
+  }
+} 

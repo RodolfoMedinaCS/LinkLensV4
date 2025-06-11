@@ -1,0 +1,40 @@
+apps/
+└─ web/
+   └─ pages/
+      ├─ _app.tsx                # global CSS, ThemeProvider, AuthProvider
+      ├─ _document.tsx           # fonts, color-mode meta, analytics
+      ├─ index.tsx               # marketing / landing (redirects to /dashboard if authed)
+      ├─ login.tsx               # Auth UI (magic-link + OAuth)
+      ├─ signup.tsx              # optional: separate first-time flow
+      │
+      ├─ dashboard/              # authenticated shell (top-level nav lives here)
+      │   ├─ index.tsx           # “All Links” default view
+      │   ├─ clusters.tsx        # Smart Clusters grid
+      │   ├─ clusters/
+      │   │   └─ [clusterId].tsx # dynamic details page → list links + AI insight
+      │   ├─ folders.tsx         # user-created folders grid
+      │   ├─ folders/
+      │   │   └─ [folderId].tsx  # links inside a manual folder
+      │   ├─ search.tsx          # semantic & keyword search results
+      │   ├─ add.tsx             # “Add Link” lightweight form (mobile fallback)
+      │   └─ settings/           # nested settings routes
+      │       ├─ index.tsx       # account overview
+      │       ├─ profile.tsx     # name, avatar, email prefs
+      │       └─ billing.tsx     # Stripe portal (post-MVP but stub now)
+      │
+      └─ 404.tsx                 # custom not-found
+
+
+| Route                             | Purpose                                                                                                                                                 | Key implementation pointers                                                |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `/` (index)                       | Public marketing splash. If `supabase.auth.getUser()` returns a session, `router.replace('/dashboard')`.                                                | Static props OK; no auth gate needed.                                      |
+| `/login` & `/signup`              | Email magic-link + OAuth buttons (Supabase Auth UI or custom). On success → `/dashboard`.                                                               | Use `supabase.auth.signInWithOtp` or `signInWithOAuth`.                    |
+| `/dashboard`                      | Main shell with left nav (“All Links”, “Smart Clusters”, “Folders”, “Search”). Fetch first page of links via `getServerSideProps` for SEO / fast paint. | Wrap children in `DashboardLayout` so all nested pages share header & nav. |
+| `/dashboard/clusters`             | Grid of AI clusters (`select * from clusters where user_id = …`). Hover card shows summary.                                                             | Infinite scroll or pagination; call AI-engine to re-cluster on demand.     |
+| `/dashboard/clusters/[clusterId]` | Detail view: insight, confidence score, link list, “Move to folder” action.                                                                             | Dynamic route param via `useRouter`. Prefetch cluster links server-side.   |
+| `/dashboard/folders`              | Grid of manual folders; mirrors clusters UI but no AI tag.                                                                                              |                                                                            |
+| `/dashboard/folders/[folderId]`   | Links in that folder; “Rename”, “Delete” actions.                                                                                                       |                                                                            |
+| `/dashboard/search`               | Combined vector + text search UI. `?q=` query param debounced into `/rpc/search_links`.                                                                 |                                                                            |
+| `/dashboard/add`                  | Minimal add-link form (URL + optional tags) — backup for users not on extension/mobile.                                                                 |                                                                            |
+| `/dashboard/settings/*`           | Basic profile & billing stubs. Include a “Danger Zone” for account deletion.                                                                            |                                                                            |
+| `404`                             | Friendly lost-page graphic linking back to `/dashboard`.                                                                                                |                                                                            |
