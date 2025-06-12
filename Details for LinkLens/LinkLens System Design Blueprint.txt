@@ -1,0 +1,303 @@
+LinkLens System Design Blueprint
+1. Executive Summary
+
+LinkLens is an AI-native bookmark management platform leveraging Next.js 15 frontend, FastAPI backend, and Supabase PostgreSQL with pgvector for semantic search
+. The MVP focuses on five core features: one-click capture via browser extension, LLM-generated summaries, semantic search, auto-clustering, and quality control. The system targets knowledge workers requiring intelligent content organization. Using ShadCN/UI components with Framer Motion animations, the platform emphasizes privacy-first architecture with freemium pricing. Initial deployment supports 500+ active users with 25+ links each, achieving 80% auto-clustering coverage. The phased approach prioritizes solo user experience before collaboration features, ensuring AI-driven differentiation in the competitive bookmark management space
+
+.
+2. Mermaid Architecture Diagram
+
+text
+graph TB
+    subgraph "Frontend Layer"
+        A[Next.js 15 App] --> B[ShadCN/UI Components]
+        A --> C[Framer Motion Animations]
+        A --> D[Browser Extension MV3]
+    end
+    
+    subgraph "API Gateway"
+        E[Supabase Edge Functions]
+        F[FastAPI Backend]
+    end
+    
+    subgraph "Data Layer"
+        G[PostgreSQL + pgvector]
+        H[OpenAI Embeddings API]
+        I[Web Scraping Pipeline]
+    end
+    
+    subgraph "Infrastructure"
+        J[GitHub Actions CI/CD]
+        K[Supabase Monitoring]
+        L[Auto-scaling Compute]
+    end
+    
+    A --> E
+    A --> F
+    F --> G
+    F --> H
+    F --> I
+    E --> G
+    J --> A
+    J --> F
+    K --> G
+
+3. Technology Decisions Table
+Component	Option A	Option B	Selected	Rationale
+Frontend Framework	React 18	Next.js 15	Next.js 15	Built-in SSR, App Router, React 19 support, faster static generation
+UI Library	Material-UI	ShadCN/UI	ShadCN/UI	Code ownership transfer, LLM-friendly, customizable without maintenance burden
+Animation Library	React Spring	Framer Motion	Framer Motion	Production-ready, gesture support, 60fps performance, React 19 compatibility
+Backend Framework	Django REST	FastAPI	FastAPI	Async/await support, automatic OpenAPI docs, type safety, high performance
+Database	MongoDB Atlas	Supabase PostgreSQL	Supabase PostgreSQL	Built-in pgvector, automatic embeddings, real-time capabilities, auto-generated APIs
+Authentication	Auth0	Supabase Auth	Supabase Auth	Integrated with database, magic links, OAuth providers, RLS policies
+Vector Search	Pinecone	pgvector	pgvector	Native PostgreSQL, automatic indexing, HNSW support, cost-effective
+CI/CD	Jenkins	GitHub Actions	GitHub Actions	Native GitHub integration, marketplace actions, matrix builds, cost-effective
+4. Database & Data Model
+Core Entities
+
+sql
+-- Users table with RLS
+users (id, email, created_at, settings)
+
+-- Links with vector embeddings
+links (
+  id, user_id, url, title, description, 
+  content_text, favicon_url, scraped_at,
+  embedding vector(1536), -- OpenAI text-embedding-3-small
+  tags[], folder_id, cluster_id
+)
+
+-- AI-generated clusters
+clusters (
+  id, user_id, name, insight, confidence_score,
+  created_at, updated_at, link_count
+)
+
+-- Manual folders
+folders (id, user_id, name, created_at, parent_id)
+
+Indexing Strategy
+
+    HNSW Index: CREATE INDEX ON links USING hnsw (embedding vector_cosine_ops)
+
+    Composite Index: (user_id, created_at DESC) for timeline queries
+
+    GIN Index: tags array for tag-based filtering
+
+    Partial Index: WHERE cluster_id IS NOT NULL for clustered links
+
+Partitioning Strategy
+
+    Range Partition: By created_at (monthly) for links table scaling
+
+    Hash Partition: By user_id for high-concurrency user data
+
+5. API Surface
+REST Endpoints (FastAPI)
+
+python
+# Link management
+POST   /api/v1/links              # Rate: 60/min
+GET    /api/v1/links              # Rate: 300/min  
+PATCH  /api/v1/links/{id}         # Rate: 30/min
+DELETE /api/v1/links/{id}         # Rate: 30/min
+
+# Semantic search
+POST   /api/v1/search             # Rate: 30/min
+# Payload: {"query": str, "limit": int, "filters": dict}
+
+# Clustering
+POST   /api/v1/clusters/generate  # Rate: 5/min
+GET    /api/v1/clusters           # Rate: 60/min
+PATCH  /api/v1/clusters/{id}      # Rate: 20/min
+
+Real-time Events (Supabase)
+
+sql
+-- Real-time subscriptions
+links:user_id=eq.{user_id}        # Link updates
+clusters:user_id=eq.{user_id}     # Cluster changes
+
+Browser Extension API
+
+javascript
+// Manifest V3 service worker
+chrome.action.onClicked -> captureLink()
+chrome.tabs.onUpdated -> extractMetadata()
+
+6. Security & Compliance Checklist
+Authentication & Authorization
+
+    ✅ JWT with RS256: Supabase Auth with 15-min access tokens
+
+    ✅ Row Level Security: PostgreSQL RLS policies per user
+
+    ✅ OAuth Providers: Google, GitHub integration
+
+    ✅ Magic Links: Passwordless authentication option
+
+Data Protection
+
+    ✅ Encryption at Rest: AES-256 (Supabase managed)
+
+    ✅ Encryption in Transit: TLS 1.3 for all connections
+
+    ✅ Data Minimization: Only essential metadata scraped
+
+    ✅ GDPR Compliance: Data export, deletion, consent management
+
+Security Controls
+
+    ✅ API Rate Limiting: Per-user quotas via Supabase
+
+    ✅ Input Validation: Pydantic models for all endpoints
+
+    ✅ CORS Policy: Restricted to authorized domains
+
+    ✅ Content Security Policy: Strict CSP headers
+
+Monitoring & Incident Response
+
+    ✅ Security Logging: All auth events, API access
+
+    ✅ Anomaly Detection: Unusual usage patterns
+
+    ✅ Breach Notification: 72-hour GDPR compliance
+
+    ✅ Penetration Testing: Quarterly security assessments
+
+7. Performance & Cost Estimates
+Development Environment
+
+    Supabase Free Tier: $0/month (2 projects, 500MB DB)
+
+    OpenAI API: ~$50/month (10K embeddings/day)
+
+    Vercel Hobby: $0/month (Next.js hosting)
+
+    Total: ~$50/month
+
+Beta Environment (500 users)
+
+    Supabase Pro: $25/month (8GB DB, 100K monthly users)
+
+    OpenAI API: ~$200/month (50K embeddings/day)
+
+    Vercel Pro: $20/month (enhanced performance)
+
+    Total: ~$245/month
+
+Production Environment (10K users)
+
+    Supabase Team: $599/month (256GB DB, 500K monthly users)
+
+    OpenAI API: ~$800/month (200K embeddings/day)
+
+    Vercel Pro: $20/month
+
+    Monitoring Tools: $100/month
+
+    Total: ~$1,519/month
+
+8. Phased Implementation Roadmap
+Days 1-30: Foundation Sprint
+
+Team: 2 full-stack developers, 1 designer
+
+    ✅ Week 1: Next.js 15 setup, Supabase configuration, ShadCN/UI integration
+
+✅ Week 2: Basic authentication, link CRUD operations, database schema
+
+✅ Week 3: OpenAI embeddings integration, semantic search MVP
+
+✅ Week 4: Browser extension MV3, basic clustering algorithm
+
+    Acceptance: Core functionality demo, 100 test links clustered
+
+Days 31-60: AI & UX Sprint
+
+Team: +1 AI/ML engineer, +1 UX designer
+
+    ✅ Week 5-6: Advanced clustering with confidence scores, UI polish
+
+✅ Week 7: Framer Motion animations, responsive design
+
+✅ Week 8: Performance optimization, caching strategies
+
+    Acceptance: Beta deployment, 50 alpha users onboarded
+
+Days 61-90: Launch Sprint
+
+Team: +1 DevOps engineer, +1 QA tester
+
+    ✅ Week 9-10: CI/CD pipeline, monitoring setup
+
+✅ Week 11: Security audit, WCAG 2.2 AA compliance
+
+    ✅ Week 12: Load testing, production deployment
+
+    Acceptance: Public beta launch, 500+ registered users
+
+9. UX & Theming Guidelines
+Design System (Focus Terminal Theme)
+
+    Primary Colors: #FFFFFF (white), #3E63DD (electric blue)
+
+    Background: #0D1117 (near black), #161B22 (card backgrounds)
+
+    Typography: Inter (headings/body), JetBrains Mono (code/tags)
+
+    Component Library: ShadCN/UI with custom Focus Terminal styling
+
+Accessibility Compliance
+
+    ✅ WCAG 2.2 AA: 4.5:1 contrast ratio for normal text
+
+    ✅ Focus Management: Visible focus states, keyboard navigation
+
+    ✅ Touch Targets: 44x44px minimum on mobile
+
+    ✅ Screen Readers: Semantic HTML, ARIA labels
+
+    ✅ Motion Control: prefers-reduced-motion support
+
+Animation Strategy
+
+    Micro-interactions: Hover states, button feedback (Framer Motion)
+
+    Page Transitions: Smooth navigation between routes
+
+    Loading States: Skeleton screens for async operations
+
+    Gesture Support: Drag-and-drop for cluster organization
+
+10. Open Questions & Risks
+Technical Risks
+
+    pgvector Performance: Large-scale indexing may impact query performance
+
+    Mitigation: External indexing for datasets >100K vectors
+
+OpenAI Rate Limits: API throttling during high usage periods
+
+    Mitigation: Embedding queue with retry logic, backup providers
+
+Browser Extension MV3: Service worker limitations in Manifest V3
+
+        Mitigation: Optimize for event-driven architecture, test across browsers
+
+Business Risks
+
+    User Acquisition: Competitive market with established players
+
+        Mitigation: Focus on AI differentiation, developer-friendly features
+
+    Cost Scaling: OpenAI API costs may scale non-linearly
+
+        Mitigation: Implement usage tiers, consider local embeddings for large users
+
+Regulatory Risks
+
+    GDPR Compliance: Cross-border data processing complexities
+
+    Mitigation: EU data residency options, comprehensive privacy controls

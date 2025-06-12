@@ -8,9 +8,29 @@ import os
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
-# --- Supabase Initialization ---
+# --- Environment Setup ---
 # Load environment variables from .env file in the current directory
 load_dotenv()
+
+# Simplified OpenAI Initialization
+# This will try to use the new (v1.x+) SDK first, and fall back to the old one.
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+openai_client = None
+
+if OPENAI_API_KEY:
+    try:
+        from openai import OpenAI
+        openai_client = OpenAI(api_key=OPENAI_API_KEY)
+        print("Initialized OpenAI SDK v1.x+ with API key")
+    except ImportError:
+        try:
+            import openai
+            openai.api_key = OPENAI_API_KEY
+            print("Initialized OpenAI SDK v0.x (legacy) with API key")
+        except Exception as e:
+            print(f"Error initializing OpenAI: {e}")
+else:
+    print("Warning: OPENAI_API_KEY not found. Summarization will be skipped.")
 
 # Use environment variables for secure credential management
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
@@ -21,42 +41,108 @@ if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
     raise RuntimeError("Supabase credentials (URL and Service Role Key) not found in environment variables.")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-# --- End Supabase Initialization ---
+# --- End Initialization ---
 
 def scrape_and_update_link(link_id: str, url: str):
     """
-    Scrapes a URL, processes the data, and updates the Supabase database.
+    Scrapes, summarizes, and updates a link record in a multi-step process.
     """
-    print(f"Starting scrape for link_id: {link_id}, url: {url}")
-    
-    headers = {'User-Agent': 'LinkLensBot/1.0 (+https://linklens.io/about)'}
-    
+    print(f"Starting job for link_id: {link_id}, url: {url}")
+    scraped_data = None
     try:
-        response = requests.get(url, headers=headers, timeout=15)
-        response.raise_for_status()
+        # 1. Scrape website content and metadata
         _update_link_status(link_id, 'scraping')
-
-        # Step 1: Scrape the data from the URL
+        response = requests.get(url, headers={'User-Agent': 'LinkLensBot/1.0'}, timeout=20)
+        response.raise_for_status()
         scraped_data = _parse_html(url, response.text)
-
-        # Step 2: Update the 'links' and 'link_content' tables
-        _update_database_with_scraped_data(link_id, scraped_data)
-
-        # Step 3: Chunk text and generate embeddings (Placeholder)
-        _chunk_and_embed_content(link_id, scraped_data['mainContent']['text'])
-
-        # Final step: Mark the link as 'processed'
-        _update_link_status(link_id, 'processed')
         
-        print(f"Successfully processed and stored link_id: {link_id}")
+        # 2. Update DB with scraped metadata
+        _update_database_with_scraped_data(link_id, scraped_data)
+        print(f"[{link_id}] Successfully scraped metadata.")
 
     except requests.RequestException as e:
-        print(f"Error fetching {url} for link_id {link_id}: {e}")
+        status_code = e.response.status_code if hasattr(e, 'response') and e.response else "N/A"
+        print(f"Error fetching {url} for link_id {link_id}. Status: {status_code}. Error: {e}")
         _update_link_status(link_id, 'failed')
+        return
     except Exception as e:
-        print(f"An unexpected error occurred for link_id {link_id}: {e}")
+        print(f"An error occurred during scraping for link_id {link_id}: {e}")
         _update_link_status(link_id, 'failed')
+        return
 
+    # Check if main content was extracted successfully
+    content_text = scraped_data.get('mainContent', {}).get('text', '')
+    if not content_text or len(content_text.strip()) < 100:
+        print(f"[{link_id}] Content too short/empty ({len(content_text.strip()) if content_text else 0} chars). Skipping summarization.")
+        # Still mark as processed since we got metadata
+        _update_link_status(link_id, 'processed')
+        return
+
+    try:
+        # 3. Generate AI Summary
+        if OPENAI_API_KEY and openai_client and scraped_data:
+            _update_link_status(link_id, 'summarizing')
+            summary = _generate_summary(scraped_data['mainContent']['text'])
+            
+            # 4. Update DB with summary
+            supabase.table('links').update({'ai_summary': summary}).eq('id', link_id).execute()
+            print(f"[{link_id}] Successfully generated and saved summary: '{summary[:100]}...'")
+        else:
+            print(f"[{link_id}] Skipping summarization due to missing OpenAI setup.")
+            # Add placeholder summary to indicate it wasn't generated
+            supabase.table('links').update({
+                'ai_summary': 'AI summarization not available. Please check OpenAI API key configuration.'
+            }).eq('id', link_id).execute()
+
+    except Exception as e:
+        print(f"An error occurred during summarization for link_id {link_id}: {e}")
+        _update_link_status(link_id, 'failed')
+        return
+
+    # 5. Finalize
+    _update_link_status(link_id, 'processed')
+    print(f"Successfully processed job for link_id: {link_id}")
+
+
+def _generate_summary(content: str) -> str:
+    """
+    Generates a 2-3 sentence summary of the text content using an LLM.
+    """
+    if not OPENAI_API_KEY or not openai_client:
+        print("OpenAI client not available - returning placeholder message")
+        return "AI summary unavailable: API key not configured."
+        
+    # Truncate content and check if it's meaningful enough to summarize
+    # Many sites (like Twitch) may not have much readable text.
+    truncated_content = content.strip()[:4000] if content else ""
+    
+    # Check if content is empty or too short
+    if not truncated_content or len(truncated_content) < 100:
+        print(f"Content for summary is too short ({len(truncated_content)} chars). Skipping.")
+        return "Not enough content to generate a summary."
+
+    try:
+        print(f"Generating summary for content (first 100 chars): '{truncated_content[:100]}...'")
+        
+        # New SDK (v1.x+)
+        response = openai_client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant that summarizes web content into 2-3 concise sentences."},
+                {"role": "user", "content": f"Please summarize the following content:\n\n{truncated_content}"}
+            ]
+        )
+        summary = response.choices[0].message.content
+        
+        print(f"Successfully generated summary: '{summary}'")
+        return summary
+
+    except Exception as e:
+        error_message = str(e)
+        print(f"Error generating summary with OpenAI: {error_message}")
+        if "authentication" in error_message.lower():
+             return "Failed to generate summary: OpenAI authentication error. Please check your API key."
+        return f"Failed to generate AI summary: {error_message[:100]}"
 
 def _parse_html(url: str, html: str) -> Dict[str, Any]:
     """Parses the raw HTML and extracts all required data points."""

@@ -20,19 +20,22 @@ export default defineConfig({
   plugins: [
     webExtension({
       manifest: {
-        name: "LinkLens Capture",
+        name: "LinkLens",
         description: "Save and summarize links with LinkLens.",
         version: packageJson.version,
         manifest_version: 3,
-        permissions: ["storage", "tabs"],
+        permissions: [
+          "storage",
+          "scripting",
+          "commands",
+          "activeTab"
+        ],
         host_permissions: [
-          "http://localhost:3000/*",
-          "https://your-domain.com/*"
+          "<all_urls>"
         ],
         externally_connectable: {
           "matches": [
-            "http://localhost:3000/*",
-            "https://your-domain.com/*"
+            "http://localhost:3000/*"
           ]
         },
         action: {
@@ -46,6 +49,15 @@ export default defineConfig({
         background: {
           service_worker: 'src/background.ts',
           type: 'module'
+        },
+        commands: {
+          "save-link-command": {
+            "suggested_key": {
+              "default": "Ctrl+Shift+L",
+              "mac": "Command+Shift+L"
+            },
+            "description": "Save the current page to LinkLens"
+          }
         },
         content_scripts: [
           {

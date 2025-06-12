@@ -1,0 +1,108 @@
+LinkLens – Smart Clusters Implementation Cheatsheet
+
+1. Project Snapshot
+
+LinkLens is a privacy‑first bookmarking platform that enriches saved URLs with AI‑powered metadata and surfacing tools.
+
+Current Foundation
+
+Authentication & Capture: Secure login plus manual and browser‑extension link saving.
+
+Metadata Pipeline: Title, favicon, full‑page content, and GPT‑generated descriptions.
+
+Organization Layer: Nested folders, tags, and bulk actions.
+
+Search & Discovery: Instant full‑text search, rich filters (date, domain, tag), and sorting.
+
+Intelligent Utilities: Duplicate detection and early AI summaries.
+
+Strategic Inflection Point: Ship Smart Clusters as the signature AI feature for a compelling MVP.
+
+2. MVP Checklist (Launch‑Critical)
+
+Core Smart‑Cluster Engine
+
+Automatic clustering via OpenAI embeddings + pgvector.
+
+Concept bridges → short “why these links connect” insights.
+
+Cluster summaries (1‑2 sentences) auto‑generated.
+
+Weekly email digests of new patterns.
+
+User‑Friendly Cluster Controls
+
+Essential (always visible)
+
+Slider: # of clusters (auto‑detect default).
+
+Rename, merge (drag‑and‑drop), move links.
+
+“Why this cluster?” info popover.
+
+Advanced (progressive disclosure)
+
+Grouping sensitivity (Loose ⇄ Strict).
+
+Update frequency (Real‑time / Daily).
+
+Scope (All vs. Recent links).
+
+MVP Foundation
+
+Freemium tiering – e.g., 50‑100 links free.
+
+Interactive onboarding tour showcasing Smart Clusters with sample data.
+
+Inline feedback (“Was this insight helpful?”) for model tuning.
+
+3. UX & Interaction Playbook for Smart Clusters
+
+Design Question
+
+Recommended Pattern
+
+Display location
+
+Hybrid: Embedded accordion sections in main library plus a dedicated “Cluster Analysis” page (canvas view).
+
+Folder parity
+
+Behave like folders but carry an AI badge & gradient background; extra controls gated behind hover/advanced panel.
+
+Creation trigger
+
+Auto‑create when ≥10 links saved in 24 h; manual Recluster button in toolbar.
+
+Link deletion
+
+Re‑compute insight; disband if cluster <3 links. Toast "Cluster updated" with Undo.
+
+Drag‑and‑drop
+
+Pre‑drop color cue (green/orange/red by similarity). Regenerate insight if similarity ≥ 70 %. Suggest new cluster if low match.
+
+User messaging
+
+Dismissible confidence (%), “Why this group?” modal, blue‑dot indicators for new activity—avoid modal spam.
+
+4. Recommended UX Flow (Happy Path)
+
+Save links ➜ Auto cluster (background job).
+
+Sidebar shows new AI section with expandable Smart Clusters.
+
+User hovers → sees AI badge + quick actions.
+
+Click opens Cluster Analysis canvas (semantic map + list).
+
+Interact: drag links, rename clusters, tweak sensitivity.
+
+Weekly digest email recaps emerging themes and bridges.
+
+5. Open Follow‑Up
+
+Which early‑adopter persona (researcher, curator, developer, etc.) will you optimize the Smart Cluster workflow for first? Tailoring copy and default settings to that audience can sharpen initial product‑market fit.
+
+Keep this sheet handy during dev sprints to stay laser‑focused on the MVP’s differentiating value.
+

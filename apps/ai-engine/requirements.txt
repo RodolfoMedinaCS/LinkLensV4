@@ -6,4 +6,5 @@ lxml
 readability-lxml
 redis
 supabase
-python-dotenv 
+python-dotenv
+openai 

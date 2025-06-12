@@ -1,11 +1,11 @@
 import React, { Suspense } from 'react';
 import LinkList from '../components/LinkList';
 import { LinkListSkeleton } from '../components/LinkListSkeleton';
-import { createServerClient } from '../lib/supabase/server';
-import { LinkWithContent } from '../../types/link';
+import { createSupabaseServerClient } from '../lib/supabase/server';
+import { type LinkWithContent } from '../../types/link';
 
 async function getLinks(): Promise<LinkWithContent[]> {
-  const supabase = createServerClient();
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -14,7 +14,7 @@ async function getLinks(): Promise<LinkWithContent[]> {
 
   const { data, error } = await supabase
     .from('links')
-    .select('*, link_content(*)')
+    .select('id, user_id, created_at, url, title, description, main_image_url:image_url, site_name, lang, favicon_url, status, ai_summary, link_content(*)')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 

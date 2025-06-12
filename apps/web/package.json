@@ -1,0 +1,38 @@
+{
+  "name": "web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev:web": "next dev",
+    "dev:ai": "cd ../../apps/ai-engine && python -m uvicorn app.main:app --reload --port 8001",
+    "dev": "concurrently --kill-others-on-fail --names \"WEB,AI\" --prefix-colors \"cyan,magenta\" \"npm:dev:web\" \"npm:dev:ai\"",
+    "build": "next build",
+    "start:web": "next start",
+    "start:ai": "cd ../../apps/ai-engine && NODE_ENV=production python -m uvicorn app.main:app --port 8001",
+    "start": "concurrently --kill-others-on-fail --names \"WEB,AI\" --prefix-colors \"cyan,magenta\" \"npm:start:web\" \"npm:start:ai\"",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@supabase/auth-ui-react": "^0.4.7",
+    "@supabase/auth-ui-shared": "^0.1.8",
+    "@supabase/supabase-js": "^2.50.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.17.0",
+    "lucide-react": "^0.514.0",
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "tailwind-merge": "^3.3.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "18.3.23",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10.0.1",
+    "concurrently": "^8.2.2",
+    "postcss": "^8",
+    "tailwindcss": "^3.3.0"
+  }
+} 

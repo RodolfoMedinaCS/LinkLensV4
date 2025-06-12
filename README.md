@@ -56,19 +56,39 @@ This project uses Supabase Authentication for user management. Follow these step
 
    To enable social authentication, configure the providers in your Supabase dashboard.
 
-## Development
+## Local Development Setup
 
-1. Install dependencies:
-   ```
-   npm install
-   ```
+This project consists of two separate services that must run together:
 
-2. Run the development server:
-   ```
-   npm run dev
-   ```
+1.  **Next.js Web App**: The frontend application running on port 3000.
+2.  **FastAPI AI Engine**: The Python backend service running on port 8001.
 
-3. Open [http://localhost:3000](http://localhost:3000) to see the application.
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) (version 20.x or higher recommended)
+- [Python](https://www.python.org/downloads/) (version 3.9 or higher recommended)
+- `pip` (Python's package installer)
+
+### Running the Application
+
+1.  **Install JavaScript Dependencies:**
+    ```bash
+    npm install
+    ```
+
+2.  **Install Python Dependencies:**
+    The AI engine's dependencies are listed in `apps/ai-engine/requirements.txt`. Install them using pip:
+    ```bash
+    pip install -r apps/ai-engine/requirements.txt
+    ```
+
+3.  **Run Both Services:**
+    The `dev` command uses `concurrently` to launch both the web app and the AI engine with a single command.
+    ```bash
+    npm run dev
+    ```
+
+    You should see color-coded logs prefixed with `[WEB]` and `[AI]`. The web application will be available at [http://localhost:3000](http://localhost:3000).
 
 ## Design System
 

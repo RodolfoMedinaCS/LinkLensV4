@@ -17,6 +17,7 @@ export type LinkWithContent = {
   description: string | null;
   site_name: string | null;
   main_image_url: string | null;
+  favicon_url: string | null;
   status: "pending" | "processing" | "processed" | "failed";
   tags?: string[];
   ai_summary?: string;

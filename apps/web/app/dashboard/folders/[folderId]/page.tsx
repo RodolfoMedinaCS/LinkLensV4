@@ -7,7 +7,7 @@ import { type LinkWithContent } from '../../../../types/link';
 import { type Folder } from '../../../../types/collection';
 
 const getFolderDetails = async (folderId: string): Promise<{ folder: Folder | null, links: LinkWithContent[] }> => {
-    const supabase = createServerClient();
+    const supabase = await createServerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
@@ -35,7 +35,7 @@ const getFolderDetails = async (folderId: string): Promise<{ folder: Folder | nu
         return { folder, links: [] };
     }
 
-    const linkIds = linkRelations?.map(r => r.link_id) || [];
+    const linkIds = linkRelations?.map((r: { link_id: string }) => r.link_id) || [];
 
     if (linkIds.length === 0) {
         return { folder: { ...folder, linkCount: 0, summary: folder.description || '' }, links: [] };

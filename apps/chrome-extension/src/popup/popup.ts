@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     console.log(`Sending saveLink message for URL: ${tab.url}`);
     // Tell the background script to do the work
-    chrome.runtime.sendMessage({ action: 'saveLink', url: tab.url }, (response) => {
+    chrome.runtime.sendMessage({ action: 'saveLink', tab: tab }, (response) => {
       console.log("Response from background script:", response);
       if (response?.success) {
         statusMessage.textContent = 'Link Saved!';
