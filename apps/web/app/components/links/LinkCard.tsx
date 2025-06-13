@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../lib/utils';
 import { Skeleton } from '../ui/skeleton';
 import { Badge } from '../ui/badge';
@@ -15,12 +15,6 @@ import {
     ContextMenuSeparator,
     ContextMenuShortcut,
  } from '../ui/context-menu';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '../ui/tooltip';
 import { getShortcutKey } from '../../../utils/detectOS';
 
 /**
@@ -33,13 +27,14 @@ interface LinkCardProps {
   title?: string | null;
   aiSummary?: string | null;
   faviconUrl?: string | null;
-  status?: 'processing' | 'processed' | 'error';
+  status: 'processing' | 'processed' | 'error';
   onDelete: (linkId: string) => void;
   isFocused: boolean;
   onFocusRequested: (linkId: string) => void;
   onActionComplete: () => void;
-  onMouseEnter: () => void;
-  onMouseLeave: () => void;
+  itemVariants: any;
+  isScrolling?: boolean;
+  density?: 'comfortable' | 'compact';
 }
 
 /**
@@ -47,48 +42,44 @@ interface LinkCardProps {
  * 'processing', 'processed', and 'error'.
  * Includes animations for state transitions.
  */
-export const LinkCard = React.forwardRef<HTMLDivElement, LinkCardProps>(({
+export const LinkCard = React.memo(React.forwardRef<HTMLDivElement, LinkCardProps>(({
   linkId,
   url,
   title,
   aiSummary,
   faviconUrl,
-  status = 'processed',
+  status,
   onDelete,
   isFocused,
   onFocusRequested,
   onActionComplete,
-  onMouseEnter,
-  onMouseLeave
+  itemVariants,
+  isScrolling = false,
+  density = 'comfortable',
 }, ref) => {
   const domain = new URL(url).hostname;
   const linkRef = useRef<HTMLAnchorElement>(null);
   const summaryRef = useRef<HTMLParagraphElement>(null);
   const ignoreFocusRef = useRef(false);
   const [shortcutKey, setShortcutKey] = useState('⌘');
-  const [isTruncated, setIsTruncated] = useState(false);
   const [isFocusable, setIsFocusable] = useState(true);
 
   useEffect(() => {
     // getShortcutKey relies on `navigator`, so we call it in useEffect.
     setShortcutKey(getShortcutKey());
-
-    // Check for truncation
-    if (summaryRef.current) {
-        setIsTruncated(summaryRef.current.scrollHeight > summaryRef.current.clientHeight);
-    }
-  }, [aiSummary]); // Re-check when summary changes
+  }, []); // Re-check when summary changes
 
   const handleClick = () => {
     // Programmatically click the hidden link
     linkRef.current?.click();
   };
 
-  const handleFocus = () => {
+  const handleFocus = (e: React.FocusEvent<HTMLDivElement>) => {
     if (ignoreFocusRef.current) {
         // This focus event was triggered by the context menu closing.
-        // Ignore it and reset the flag.
+        // Ignore it, blur the element to prevent visual artifacts, and reset the flag.
         ignoreFocusRef.current = false;
+        e.currentTarget.blur();
         return;
     }
     // This was a user-initiated focus (e.g., tabbing).
@@ -123,7 +114,43 @@ export const LinkCard = React.forwardRef<HTMLDivElement, LinkCardProps>(({
     document.head.appendChild(style);
   }, []);
 
-  const cardBaseClasses = "relative flex flex-col h-full rounded-lg border bg-card p-5 overflow-hidden";
+  const renderSummaryContent = () => {
+    if (status === 'processing') {
+      return (
+        <motion.div key="processing" exit={{ opacity: 0, transition: { duration: 0.15 } }}>
+          <Badge variant="summaryProcessing" className="mb-2">Processing...</Badge>
+        </motion.div>
+      );
+    }
+    if (status === 'error') {
+      return (
+        <motion.div key="error">
+          <Badge variant="summaryError" className="mb-2">Error</Badge>
+          <p className="text-red-500 text-sm">Failed to generate summary.</p>
+        </motion.div>
+      );
+    }
+    if (status === 'processed' && aiSummary) {
+      return (
+        <motion.div key="processed" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }}>
+          <Badge variant="summary" className="mb-2">
+            AI Summary
+          </Badge>
+          <p ref={summaryRef} className="text-gray-500 dark:text-neutral-400 text-sm leading-relaxed line-clamp-4">
+            {aiSummary}
+          </p>
+        </motion.div>
+      );
+    }
+    return null;
+  };
+
+  const cardBaseClasses = "relative flex flex-col h-full rounded-lg border bg-card p-5";
+  
+  const contentVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { delay: 0.1 } }
+  };
 
   // State: Processing
   if (status === 'processing') {
@@ -132,7 +159,7 @@ export const LinkCard = React.forwardRef<HTMLDivElement, LinkCardProps>(({
         <div className="flex items-center gap-3 mb-4">
           <Skeleton className="h-5 w-5 rounded-full" />
           <div className="flex-grow">
-            <Skeleton className="h-4 w-1/3" />
+            <Skeleton className="h-4 w-1/w-3" />
           </div>
           <div className="absolute top-3 right-3 flex items-center gap-2">
             <span className="text-xs text-accent-foreground">Processing</span>
@@ -166,7 +193,10 @@ export const LinkCard = React.forwardRef<HTMLDivElement, LinkCardProps>(({
   // State: Processed
   return (
     <ContextMenu onOpenChange={(open) => {
-        if (!open) {
+        if (open) {
+            // Menu is opening, ensure the card is marked as focused.
+            onFocusRequested(linkId);
+        } else {
             // The context menu is closing. A programmatic focus event is imminent.
             // Set a flag to ignore this specific, upcoming focus event.
             ignoreFocusRef.current = true;
@@ -176,24 +206,27 @@ export const LinkCard = React.forwardRef<HTMLDivElement, LinkCardProps>(({
         <ContextMenuTrigger asChild>
             <motion.div
             ref={ref}
+            layout
+            layoutId={linkId}
+            variants={itemVariants}
             tabIndex={isFocusable ? 0 : -1}
             onClick={handleClick}
             onFocus={handleFocus}
             onKeyDown={handleKeyDown}
-            onMouseEnter={onMouseEnter}
-            onMouseLeave={onMouseLeave}
             className={cn(
                 "group",
                 cardBaseClasses,
-                'cursor-pointer transition-colors',
-                'focus:outline-none', // We use custom focus styles
+                'cursor-pointer',
+                'focus:outline-none',
+                !isScrolling && 'transition-all duration-200 ease-out',
+                'will-change-transform transform-gpu',
                 isFocused 
-                    ? 'ring-2 ring-blue-500 border-blue-500' // Focused state
-                    : 'border-gray-200 dark:border-border', // Default state
-                'hover:border-blue-300 dark:hover:border-blue-500/50', // Hover state
-                'will-change-transform backface-hidden'
+                    ? 'ring-2 ring-blue-500 border-blue-500'
+                    : 'border-gray-200 dark:border-border',
+                !isScrolling && 'hover:-translate-y-[2px] hover:border-blue-500/30',
+                !isScrolling && 'hover:bg-slate-50',
+                !isScrolling && 'dark:hover:bg-neutral-800/30'
             )}
-            whileHover={{ y: isFocused ? 0 : -2, scale: isFocused ? 1 : 1.01 }}
             >
             <Link 
                 ref={linkRef} 
@@ -205,8 +238,14 @@ export const LinkCard = React.forwardRef<HTMLDivElement, LinkCardProps>(({
                 tabIndex={-1} // Prevent the link itself from being tabbed to
             />
             
-            {/* Card Content */}
-            <div className="relative z-10">
+            <motion.div 
+                layout="position"
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1, transition: { duration: 0.3, delay: 0.1 } }} 
+                exit={{ opacity: 0, transition: { duration: 0.1 } }}
+                className="relative z-10 flex flex-col h-full"
+            >
+                {/* Header */}
                 <div className="flex items-center gap-3 mb-4">
                     {faviconUrl ? (
                     <img
@@ -217,67 +256,42 @@ export const LinkCard = React.forwardRef<HTMLDivElement, LinkCardProps>(({
                     ) : (
                     <div className="h-5 w-5 rounded-full bg-muted"></div>
                     )}
-                    <p className="text-sm text-gray-500 dark:text-muted-foreground flex-grow truncate">{domain}</p>
+                    <h3 className="font-semibold text-lg text-gray-900 dark:text-foreground leading-tight truncate flex-grow">
+                        {title || '[no-title]'}
+                    </h3>
                 </div>
 
-                <h3 className="font-semibold text-lg text-gray-900 dark:text-foreground mb-3 leading-tight truncate">
-                    {title || '[no-title]'}
-                </h3>
-
-                {aiSummary && (
-                    <div className="relative">
-                        <TooltipProvider>
-                            <Tooltip open={isTruncated ? undefined : false}>
-                                <TooltipTrigger asChild>
-                                    <div className="relative">
-                                        <Badge
-                                            variant="outline"
-                                            className="mb-2 border-amber-400/50 text-amber-400 text-xs"
-                                        >
-                                            AI Summary
-                                        </Badge>
-                                        <p 
-                                            ref={summaryRef} 
-                                            className="text-gray-600 dark:text-muted-foreground text-sm leading-relaxed four-line-clamp"
-                                        >
-                                            {aiSummary}
-                                        </p>
-                                        {isTruncated && <div className="text-fade-out" />}
-                                    </div>
-                                </TooltipTrigger>
-                                <TooltipContent side="top" align="start" className="max-w-xs prose prose-sm dark:prose-invert">
-                                    <p>{aiSummary}</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                    </div>
-                )}
-            </div>
+                {/* AI Summary Section */}
+                <div className="mb-4 min-h-[68px]">
+                    <AnimatePresence mode="wait">
+                        {renderSummaryContent()}
+                    </AnimatePresence>
+                </div>
+                
+                {/* Footer - Domain */}
+                <div className="mt-auto pt-4">
+                  <p className="text-sm text-muted-foreground truncate">{domain}</p>
+                </div>
             </motion.div>
-      </ContextMenuTrigger>
-      <ContextMenuContent className="w-48" onMouseUp={(e) => e.stopPropagation()}>
-          <ContextMenuItem onSelect={() => { window.open(url, '_blank'); onActionComplete(); }}>
-            Open Link
-            <ContextMenuShortcut>↵</ContextMenuShortcut>
-          </ContextMenuItem>
-          <ContextMenuItem onSelect={() => { navigator.clipboard.writeText(url); onActionComplete(); }}>
-            Copy Link
-            <ContextMenuShortcut>{shortcutKey}+C</ContextMenuShortcut>
-          </ContextMenuItem>
-          <ContextMenuItem onSelect={onActionComplete}>
-            Move to Folder...
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem 
-            className="text-red-500 focus:text-red-500"
-            onSelect={() => { onDelete(linkId); onActionComplete(); }}
-          >
-            Delete
-            <ContextMenuShortcut>⌫</ContextMenuShortcut>
-          </ContextMenuItem>
-      </ContextMenuContent>
+            </motion.div>
+        </ContextMenuTrigger>
+        <ContextMenuContent className="w-64" onFocusOutside={(e) => e.preventDefault()}>
+            <ContextMenuItem inset onClick={() => linkRef.current?.click()}>
+                Open Link in New Tab
+            </ContextMenuItem>
+            <ContextMenuItem inset onClick={() => navigator.clipboard.writeText(url)}>
+                Copy Link
+                <ContextMenuShortcut>{shortcutKey}C</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem inset className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/20" onClick={() => onDelete(linkId)}>
+                Delete
+                <ContextMenuShortcut>Delete</ContextMenuShortcut>
+            </ContextMenuItem>
+        </ContextMenuContent>
     </ContextMenu>
   );
-});
+}));
+LinkCard.displayName = 'LinkCard';
 
 export default LinkCard; 

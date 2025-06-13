@@ -29,7 +29,7 @@ export default async function DashboardLayout({
             <ThemeSwitcher />
           </div>
         </header>
-        <main className="flex-1 p-6 lg:p-8 bg-white dark:bg-background">
+        <main className="flex-1 overflow-y-auto p-8 min-w-0">
           {children}
         </main>
       </div>

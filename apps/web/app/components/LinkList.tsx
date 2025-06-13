@@ -1,190 +1,224 @@
 'use client';
 
-import React, { useEffect, useState, useRef, createRef } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { LinkCard } from './links/LinkCard';
-import { LinkWithContent } from '../../types/link';
+import { LinkListItem } from './links/LinkListItem';
+import { type LinkWithContent } from '../../types/link';
 import { createBrowserClient } from '../lib/supabase/client';
+import { type GroupedLinks } from '../../utils/groupLinksByDate';
+import { cn } from '../lib/utils';
+import { AnimatePresence, motion } from 'framer-motion';
+import { VariableSizeList as List } from 'react-window';
+import AutoSizer from 'react-virtualized-auto-sizer';
+
+// --- Main List Component ---
 
 type LinkListProps = {
-  links: LinkWithContent[];
+  links: GroupedLinks;
+  viewMode?: 'grid' | 'list';
+  density?: 'comfortable' | 'compact';
 };
 
-export default function LinkList({ links: initialLinks }: LinkListProps) {
-  const [links, setLinks] = useState(initialLinks);
+interface VirtualizedLinkListProps extends Omit<LinkListProps, 'links'> {
+  links: GroupedLinks;
+  handleDelete: (linkId: string) => void;
+  handleFocusRequested: (linkId: string) => void;
+  handleActionComplete: () => void;
+  focusedLinkId: string | null;
+  itemVariants: any;
+}
+
+const VirtualizedLinkList = ({ 
+  links, viewMode, density, handleDelete, handleFocusRequested, handleActionComplete, focusedLinkId, itemVariants 
+}: VirtualizedLinkListProps) => {
+
+  const gridClasses = density === 'comfortable'
+    ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6"
+    : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-4";
+  
+  // We need to flatten the grouped links into a single array for react-window
+  const { items, getItemSize } = useMemo(() => {
+    const flattened: any[] = [];
+    Object.entries(links).forEach(([groupTitle, groupLinks]) => {
+      flattened.push({ type: 'header', title: groupTitle });
+      (groupLinks as LinkWithContent[]).forEach(link => {
+        flattened.push({ type: 'item', link });
+      });
+    });
+    
+    const sizeMap = {
+      header: 72, // height for header
+      item: 69,   // height for list item
+    };
+
+    return {
+      items: flattened,
+      getItemSize: (index: number) => sizeMap[flattened[index].type as keyof typeof sizeMap] || 0,
+    };
+  }, [links, viewMode, density]);
+
+  const itemData = useMemo(() => ({
+    items,
+    props: {
+      handleDelete,
+      handleFocusRequested,
+      handleActionComplete,
+      focusedLinkId,
+      itemVariants,
+      density,
+      gridClasses
+    }
+  }), [items, handleDelete, handleFocusRequested, handleActionComplete, focusedLinkId, itemVariants, density, gridClasses]);
+
+  // The Row component for the list
+  const Row = React.memo(({ index, style, data }: any) => {
+    const item = data.items[index];
+    const { 
+      handleDelete, handleFocusRequested, handleActionComplete, 
+      focusedLinkId, itemVariants 
+    } = data.props;
+    
+    if (item.type === 'header') {
+      return (
+        <h2 style={style} className="text-xl font-bold tracking-tight text-gray-900 dark:text-gray-100 mb-4 sticky top-0 bg-background/80 backdrop-blur-sm z-10 py-2 px-4">
+          {item.title}
+        </h2>
+      );
+    }
+
+    const link = item.link;
+    return (
+      <div style={style} className="px-4 py-1">
+        <LinkListItem
+          key={link.id} linkId={link.id} url={link.url} title={link.title}
+          faviconUrl={link.favicon_url} 
+          status={['processing', 'processed', 'error'].includes(link.status) ? link.status as 'processing' | 'processed' | 'error' : 'error'}
+          onDelete={handleDelete}
+          isFocused={focusedLinkId === link.id} onFocusRequested={handleFocusRequested}
+          onActionComplete={handleActionComplete}
+          itemVariants={itemVariants}
+        />
+      </div>
+    );
+  });
+  Row.displayName = 'Row';
+
+  return (
+    <div className="w-full h-full">
+      <AnimatePresence mode="wait">
+      {viewMode === 'grid' ? (
+        <motion.div
+          key="grid"
+          className="h-full"
+        >
+          <div className="space-y-12">
+            {Object.entries(links).map(([groupTitle, groupLinks]) => (
+              <section key={groupTitle} className="mb-12">
+                <h2 className="text-xl font-bold tracking-tight text-gray-900 dark:text-gray-100 mb-4 sticky top-0 bg-background/80 backdrop-blur-sm z-10 py-2">
+                  {groupTitle}
+                </h2>
+                <div className={cn("grid", gridClasses)}>
+                  {(groupLinks as LinkWithContent[]).map((link) => (
+                    <LinkCard
+                      key={link.id}
+                      linkId={link.id}
+                      url={link.url}
+                      title={link.title}
+                      faviconUrl={link.favicon_url}
+                      aiSummary={link.ai_summary}
+                      status={['processing', 'processed', 'error'].includes(link.status) ? (link.status as 'processing' | 'processed' | 'error') : 'error'}
+                      onDelete={handleDelete}
+                      isFocused={focusedLinkId === link.id}
+                      onFocusRequested={handleFocusRequested}
+                      onActionComplete={handleActionComplete}
+                      itemVariants={itemVariants}
+                      density={density}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        </motion.div>
+      ) : (
+        <motion.div key="list" className="h-full">
+          <AutoSizer>
+            {({ height, width }) => (
+              <List
+                height={height}
+                itemCount={items.length}
+                itemSize={getItemSize}
+                width={width}
+                itemData={itemData}
+              >
+                {Row}
+              </List>
+            )}
+          </AutoSizer>
+        </motion.div>
+      )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+export default function LinkList({ links: groupedLinks, viewMode = 'grid', density = 'comfortable' }: LinkListProps) {
+  const [links, setLinks] = useState<GroupedLinks>(groupedLinks);
   const [focusedLinkId, setFocusedLinkId] = useState<string | null>(null);
-  const [hoveredLinkId, setHoveredLinkId] = useState<string | null>(null);
   const supabase = createBrowserClient();
-  const linkRefs = useRef<React.RefObject<HTMLDivElement>[]>([]);
-  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Populate refs array
-  if (linkRefs.current.length !== links.length) {
-    linkRefs.current = Array(links.length).fill(null).map((_, i) => linkRefs.current[i] || createRef());
-  }
+  useEffect(() => {
+    setLinks(groupedLinks);
+  }, [groupedLinks]);
 
-  const handleDelete = async (linkId: string) => {
-    // Optimistically remove the link from the UI
-    setLinks(currentLinks => currentLinks.filter(link => link.id !== linkId));
+  const handleDelete = useCallback(async (linkId: string) => {
+    const newLinks = { ...links };
+    for (const group in newLinks) {
+        newLinks[group] = newLinks[group].filter((link: LinkWithContent) => link.id !== linkId);
+        if (newLinks[group].length === 0) {
+            delete newLinks[group];
+        }
+    }
+    setLinks(newLinks);
 
-    // Call Supabase to delete the link from the database
-    const { error } = await supabase
-      .from('links')
-      .delete()
-      .match({ id: linkId });
-
+    const { error } = await supabase.from('links').delete().match({ id: linkId });
     if (error) {
       console.error('Error deleting link:', error);
-      // If the delete fails, revert the UI change
-      // A more robust solution might involve a toast notification
-      setLinks(initialLinks);
+      setLinks(groupedLinks); // Revert on error
     }
+  }, [groupedLinks, supabase, links]);
+
+  const handleFocusRequested = useCallback((linkId: string) => setFocusedLinkId(linkId), []);
+  const handleActionComplete = useCallback(() => setFocusedLinkId(null), []);
+
+  const itemVariants = {
+      hidden: { opacity: 0, y: 10 },
+      visible: { opacity: 1, y: 0 }
   };
 
-  useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setFocusedLinkId(null);
-      }
-    };
-    document.addEventListener('mousedown', handleOutsideClick);
-    return () => document.removeEventListener('mousedown', handleOutsideClick);
-  }, []);
+  const allLinksEmpty = Object.keys(links).length === 0;
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const targetId = hoveredLinkId || focusedLinkId;
-
-      // Shortcuts that can work with hover or focus
-      if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
-        if (!targetId) return;
-        e.preventDefault();
-        const targetLink = links.find(link => link.id === targetId);
-        if (targetLink) {
-            navigator.clipboard.writeText(targetLink.url);
-            // Optionally: add a toast notification for feedback
-        }
-        return;
-      }
-      
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (!targetId) return;
-        e.preventDefault();
-        handleDelete(targetId);
-        return;
-      }
-
-      // Navigation should only work with a focused link
-      if (!focusedLinkId) return;
-
-      const currentIndex = links.findIndex(link => link.id === focusedLinkId);
-      if (currentIndex === -1) return;
-
-      let nextIndex = -1;
-      
-      const getNumColumns = () => {
-        if (window.innerWidth >= 1024) return 3;
-        if (window.innerWidth >= 768) return 2;
-        return 1;
-      };
-      
-      const numColumns = getNumColumns();
-
-      if (e.key === 'ArrowRight') {
-        nextIndex = Math.min(currentIndex + 1, links.length - 1);
-      } else if (e.key === 'ArrowLeft') {
-        nextIndex = Math.max(currentIndex - 1, 0);
-      } else if (e.key === 'ArrowDown') {
-        nextIndex = Math.min(currentIndex + numColumns, links.length - 1);
-      } else if (e.key === 'ArrowUp') {
-        nextIndex = Math.max(currentIndex - numColumns, 0);
-      }
-
-      if (nextIndex !== -1) {
-        e.preventDefault();
-        const nextLinkId = links[nextIndex].id;
-        setFocusedLinkId(nextLinkId);
-        linkRefs.current[nextIndex]?.current?.focus();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [links, focusedLinkId, hoveredLinkId, handleDelete]);
-
-  useEffect(() => {
-    setLinks(initialLinks);
-  }, [initialLinks]);
-
-  useEffect(() => {
-    const channel = supabase
-      .channel('links-follow-up')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'links',
-        },
-        (payload) => {
-          setLinks((currentLinks) =>
-            currentLinks.map((link) =>
-              link.id === (payload.new as LinkWithContent).id
-                ? (payload.new as LinkWithContent)
-                : link
-            )
-          );
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [supabase]);
-
-  if (links.length === 0) {
+  if (allLinksEmpty) {
     return (
-      <div className="text-center py-20 border-2 border-dashed border-neutral-800 rounded-lg">
-        <h2 className="text-xl font-medium text-neutral-50">No links saved yet.</h2>
-        <p className="text-neutral-400 mt-2">Use the Chrome Extension to start capturing links.</p>
+      <div className="w-full h-full flex items-center justify-center text-center py-20 border-2 border-dashed border-neutral-800 rounded-lg">
+        <div>
+            <h2 className="text-xl font-medium text-neutral-50">No links saved yet.</h2>
+            <p className="text-neutral-400 mt-2">Use the Chrome Extension to start capturing links.</p>
+        </div>
       </div>
     );
   }
 
-  // Helper function to map database status to component status
-  const mapStatus = (status: "pending" | "processing" | "processed" | "failed"): 'processing' | 'processed' | 'error' => {
-    switch (status) {
-        case 'pending':
-        case 'processing':
-            return 'processing';
-        case 'processed':
-            return 'processed';
-        case 'failed':
-        default:
-            return 'error';
-    }
-  }
-
   return (
-    <div ref={containerRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {links.map((link, index) => (
-        <LinkCard
-            ref={linkRefs.current[index]}
-            key={link.id}
-            linkId={link.id}
-            url={link.url}
-            title={link.title}
-            aiSummary={link.ai_summary}
-            faviconUrl={link.favicon_url}
-            status={mapStatus(link.status)}
-            onDelete={handleDelete}
-            isFocused={focusedLinkId === link.id}
-            onFocusRequested={setFocusedLinkId}
-            onActionComplete={() => setFocusedLinkId(null)}
-            onMouseEnter={() => setHoveredLinkId(link.id)}
-            onMouseLeave={() => setHoveredLinkId(null)}
-        />
-      ))}
-    </div>
+    <VirtualizedLinkList
+      links={links}
+      viewMode={viewMode}
+      density={density}
+      handleDelete={handleDelete}
+      handleFocusRequested={handleFocusRequested}
+      handleActionComplete={handleActionComplete}
+      focusedLinkId={focusedLinkId}
+      itemVariants={itemVariants}
+    />
   );
 } 
