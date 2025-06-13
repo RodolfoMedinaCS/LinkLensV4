@@ -38,10 +38,10 @@ export default function Sidebar() {
     }
 
     return (
-        <aside className="w-64 flex-shrink-0 border-r border-border flex flex-col bg-card">
+        <aside className="w-64 flex-shrink-0 border-r flex flex-col bg-gray-50 dark:bg-card">
             <div className="h-16 flex items-center px-6">
-                <Link href="/dashboard" className="font-bold text-lg text-text-primary flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"></path></svg>
+                <Link href="/dashboard" className="font-bold text-lg flex items-center gap-2 text-gray-900 dark:text-foreground">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600 dark:text-primary"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"></path></svg>
                     LinkLens
                 </Link>
             </div>
@@ -52,10 +52,10 @@ export default function Sidebar() {
                         <Link
                             key={link.name}
                             href={link.href}
-                            className={`flex items-center space-x-3 px-3 py-2 rounded-sm text-sm font-medium transition-colors ${
+                            className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                                 isActive
-                                    ? 'bg-primary text-text-primary'
-                                    : 'text-text-secondary hover:bg-background hover:text-text-primary'
+                                    ? 'bg-blue-50 text-blue-700 dark:bg-secondary dark:text-secondary-foreground'
+                                    : 'text-gray-600 hover:bg-gray-100 dark:text-muted-foreground dark:hover:bg-accent dark:hover:text-accent-foreground'
                             }`}
                         >
                            <span className="w-6 h-6">{link.icon}</span>
@@ -64,14 +64,14 @@ export default function Sidebar() {
                     );
                 })}
             </nav>
-            <div className="px-4 py-4 border-t border-border mt-auto">
+            <div className="px-4 py-4 border-t mt-auto">
                 <div className="flex items-center gap-3 mb-4">
-                    <div className="w-9 h-9 rounded-full bg-background flex items-center justify-center font-bold text-primary">
+                    <div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-secondary flex items-center justify-center font-bold text-gray-800 dark:text-secondary-foreground">
                         {getInitials(user?.email)}
                     </div>
                     <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-text-primary truncate">{user?.email}</p>
-                        <Link href="/dashboard/settings" className="text-xs text-text-secondary hover:text-primary transition-colors">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-foreground truncate">{user?.email}</p>
+                        <Link href="/dashboard/settings" className="text-xs text-gray-500 dark:text-muted-foreground hover:text-blue-600 dark:hover:text-primary transition-colors">
                             Settings
                         </Link>
                     </div>

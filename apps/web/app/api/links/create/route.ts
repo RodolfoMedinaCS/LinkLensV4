@@ -3,19 +3,20 @@ import { NextResponse } from 'next/server';
 import { type NextRequest } from 'next/server';
 import { z } from 'zod';
 
-// Schema hardened based on senior developer feedback (Phase 1).
+// Schema has been expanded to accept all the rich metadata from the extension.
 const CreateLinkSchema = z.object({
   url: z.string().url(),
-  title: z.string().max(300), // Max length guard
+  title: z.string().max(300),
   pageContent: z.string().optional().nullable(),
-  excerpt: z.string().max(1000).optional().nullable(), // Max length guard
-  byline: z.string().max(200).optional().nullable(), // Max length guard
+  description: z.string().max(2000).optional().nullable(),
+  author: z.string().max(200).optional().nullable(),
+  siteName: z.string().max(200).optional().nullable(),
+  imageUrl: z.string().url().optional().nullable(),
   faviconUrl: z.string().url().optional().nullable(),
-  // The 'metadata' object from the extension is not saved directly,
-  // but could be validated here if needed in the future.
+  lang: z.string().max(50).optional().nullable(),
 });
 
-// Create a TypeScript type from the Zod schema for type safety (Recommendation #6)
+// Create a TypeScript type from the Zod schema for type safety
 type NewLinkPayload = z.infer<typeof CreateLinkSchema>;
 
 export async function POST(request: NextRequest) {
@@ -52,7 +53,8 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
-  const { url, title, pageContent, excerpt, byline, faviconUrl }: NewLinkPayload = validation.data;
+  // Destructure all the new fields from the validated data.
+  const { url, title, pageContent, description, author, siteName, imageUrl, faviconUrl, lang }: NewLinkPayload = validation.data;
 
   // 3. Initial, synchronous save to the database
   const { data: newLink, error: insertError } = await supabase
@@ -61,9 +63,12 @@ export async function POST(request: NextRequest) {
       user_id: user.id,
       url,
       title,
-      favicon_url: faviconUrl, // Assumes DB column is snake_case (Recommendation #2)
-      excerpt,
-      byline,
+      description,
+      author,
+      site_name: siteName,
+      image_url: imageUrl,
+      favicon_url: faviconUrl,
+      lang,
       status: 'pending',
     })
     .select()
@@ -83,7 +88,7 @@ export async function POST(request: NextRequest) {
   if (pageContent) {
     console.log(`Triggering AI processing for link_id: ${newLink.id}`);
     fetch(`${aiEngineUrl}/api/v1/process`, {
-      method: 'POST',
+        method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${internalApiKey}` // Secure the endpoint (Recommendation #3)

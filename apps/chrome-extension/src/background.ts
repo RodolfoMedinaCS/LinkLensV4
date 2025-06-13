@@ -3,7 +3,7 @@
 // Import the Readability script to be injected.
 // Note: This path is resolved by the build tool (e.g., Vite/Webpack).
 // Make sure your build setup includes this file in the extension's assets.
-import readabilityScript from './lib/Readability.js?raw';
+import readabilityUrl from './lib/Readability.js?url';
 
 // --- Type Declaration for Readability ---
 // This informs TypeScript about the Readability class that is injected at runtime.
@@ -23,10 +23,6 @@ declare const Readability: {
 // This function is injected into the page to grab the complete data package.
 // It contains all the sub-functions for extraction as per the plan.
 function getPageData() {
-  
-  /**
-   * Advanced Favicon Detection (Phase 1)
-   */
   const findBestFavicon = (): string => {
     const selectors = [
       'link[rel="icon"][type="image/svg+xml"]',
@@ -43,36 +39,60 @@ function getPageData() {
     }
     return `${window.location.origin}/favicon.ico`;
   };
-
-  /**
-   * Comprehensive Metadata Extraction (Phase 1)
-   */
-  const extractAllMetadata = (): object => {
+  const extractAllMetadata = (): {[key: string]: any} => {
     const metadata: { [key: string]: any } = {};
     document.querySelectorAll('meta').forEach(meta => {
       const key = meta.getAttribute('name') || meta.getAttribute('property');
-      if (key) {
+      if (key && meta.getAttribute('content')) {
         metadata[key] = meta.getAttribute('content');
       }
     });
     return metadata;
   };
+  const cleanDocumentTitle = (title: string): string => {
+    const cleaned = title.replace(/^\s*\((\d+|\d+\+)\)\s*/, '');
+    const parts = cleaned.split(/ \| | - /);
+    return (parts.length > 1 && parts[0] !== '') ? parts[0].trim() : cleaned.trim();
+  };
 
-  /**
-   * Core Content Extraction using Readability.js (Phase 1)
-   */
-  const documentClone = document.cloneNode(true) as Document;
+  // --- Site-Specific Content Isolation ---
+  // Before parsing, we try to find the most relevant part of the page.
+  let contentToParse: HTMLElement | Document = document; // Default to the whole document
+
+  if (window.location.hostname.includes('reddit.com')) {
+    const postElement = document.querySelector('shreddit-post') as HTMLElement;
+    if (postElement) {
+      console.log("LinkLens Log: Reddit site detected. Isolating post content.");
+      contentToParse = postElement;
+    }
+  } else if (window.location.hostname.includes('stackoverflow.com')) {
+    const questionElement = document.querySelector('#question') as HTMLElement;
+    if (questionElement) {
+      console.log("LinkLens Log: Stack Overflow site detected. Isolating question content.");
+      contentToParse = questionElement;
+    }
+  }
+
+  // Now, run Readability on the most relevant part of the page we found.
+  const documentClone = contentToParse.cloneNode(true) as Document;
   const article = new Readability(documentClone).parse();
+  const pageContent = article?.textContent;
+  
+  // --- Metadata and Title Extraction (still runs on the whole document) ---
+  const allMeta = extractAllMetadata();
+  const rawTitle = allMeta['og:title'] || article?.title || cleanDocumentTitle(document.title);
+  const finalTitle = rawTitle.length > 300 ? rawTitle.substring(0, 297) + '...' : rawTitle;
 
-  // Assemble the final data package
   return {
     url: window.location.href,
-    title: article?.title || document.title,
-    content: article?.textContent, // The clean text content for the AI
-    excerpt: article?.excerpt,
-    byline: article?.byline,
+    title: finalTitle,
+    pageContent: pageContent,
+    description: allMeta['og:description'] || article?.excerpt,
+    author: article?.byline,
+    siteName: allMeta['og:site_name'],
+    imageUrl: allMeta['og:image'],
     faviconUrl: findBestFavicon(),
-    metadata: extractAllMetadata(),
+    metadata: allMeta,
     timestamp: Date.now(),
     lang: document.documentElement.lang,
   };
@@ -89,29 +109,33 @@ const saveLink = (tab: chrome.tabs.Tab, sendResponse?: (response?: any) => void)
   }
   const tabId = tab.id;
 
-  // 1. Inject Readability.js library (Phase 2 Optimization)
+  // Step 1: Inject the Readability.js library from its file.
+  // This is the modern, secure, and correct way to do this.
   chrome.scripting.executeScript({
     target: { tabId },
-    func: (scriptSource) => {
-      const script = document.createElement('script');
-      script.textContent = scriptSource;
-      (document.head || document.documentElement).appendChild(script);
-      script.remove();
-    },
-    args: [readabilityScript]
-  }).then(() => {
-    // 2. Inject and execute our main data extraction script
+    files: [readabilityUrl],
+  })
+  .then(() => {
+    console.log("LinkLens Log: Readability.js injected successfully.");
+    
+    // Step 2: Now that the library is guaranteed to be loaded, run our parsing function.
     chrome.scripting.executeScript({
       target: { tabId },
-      func: getPageData,
+      func: getPageData, // This function is serialized and run on the page
     }, (injectionResults) => {
       if (chrome.runtime.lastError || !injectionResults?.[0]?.result) {
-        console.error(`Extraction failed: ${chrome.runtime.lastError?.message}`);
-        sendResponse?.({ success: false, error: "Could not extract page content." });
+        console.error(`Extraction failed: ${chrome.runtime.lastError?.message || 'No result returned.'}`);
+        sendResponse?.({ success: false, error: "Could not extract page content. Try reloading the page." });
         return;
       }
-
-      const payload = injectionResults[0].result;
+      const payload: any = injectionResults[0].result;
+      
+      // Check for custom errors from our script
+      if (payload && payload.error) {
+         console.error(`Content script error: ${payload.error}`);
+         sendResponse?.({ success: false, error: payload.error });
+         return;
+      }
 
       // 3. Send the rich data package to the backend
       chrome.storage.local.get('session', ({ session }) => {
